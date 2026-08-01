@@ -1,4 +1,5 @@
 import bcryptjs from 'https://esm.sh/bcryptjs@2.4.3?target=deno'
+import { SignJWT } from 'jsr:@panva/jose@6'
 import postgres from 'npm:postgres@3.4.7'
 
 const corsHeaders = {
@@ -20,6 +21,7 @@ type FusionUser = {
 }
 
 type FusionExtension = {
+  extension_uuid: string
   extension: string
   sip_password: string
   domain: string
@@ -50,6 +52,22 @@ const createFusionClient = () =>
     connect_timeout: 5,
     idle_timeout: 2,
   })
+
+const createSessionToken = async (user: FusionUser) => {
+  const secret = new TextEncoder().encode(getRequiredEnv('JWT_SECRET'))
+  return await new SignJWT({
+    role: 'authenticated',
+    user_uuid: user.user_uuid,
+    username: user.username,
+  })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setIssuer('mphone-fusionpbx')
+    .setAudience('authenticated')
+    .setSubject(user.user_uuid)
+    .setIssuedAt()
+    .setExpirationTime('24h')
+    .sign(secret)
+}
 
 const parseLoginRequest = async (req: Request) => {
   let body: LoginRequest
@@ -139,6 +157,7 @@ Deno.serve(async (req) => {
 
     const extensions = await fusionClient<FusionExtension[]>`
         select
+          e.extension_uuid::text as extension_uuid,
           e.extension,
           e.password as sip_password,
           d.domain_name as domain
@@ -158,13 +177,18 @@ Deno.serve(async (req) => {
       `FusionPBX login succeeded for user_uuid: ${user.user_uuid}, extensions: ${extensions.length}`
     )
 
+    const accessToken = await createSessionToken(user)
+
     return jsonResponse({
+      access_token: accessToken,
+      expires_in: 86400,
       user: {
         user_uuid: user.user_uuid,
         username: user.username,
         email: user.user_email ?? '',
       },
       extensions: extensions.map((extension) => ({
+        extension_uuid: extension.extension_uuid,
         extension: extension.extension,
         sip_password: extension.sip_password,
         domain: extension.domain,
