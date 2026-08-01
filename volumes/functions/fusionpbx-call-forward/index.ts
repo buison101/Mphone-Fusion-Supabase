@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
 
   const requestUrl = new URL(req.url)
   const extensionUuid = requestUrl.searchParams.get('extension_uuid')?.trim() ?? ''
+  const mode = requestUrl.searchParams.get('mode') === 'advanced' ? 'advanced' : 'basic'
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(extensionUuid)) {
     return jsonResponse({ error: 'Invalid extension_uuid' }, 400)
   }
@@ -70,6 +71,7 @@ Deno.serve(async (req) => {
   if (req.method === 'GET') {
     internalUrl.searchParams.set('user_uuid', userUuid)
     internalUrl.searchParams.set('extension_uuid', extensionUuid)
+    internalUrl.searchParams.set('mode', mode)
   } else {
     let settings: Record<string, unknown>
     try {
