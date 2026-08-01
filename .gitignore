@@ -1,0 +1,20 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data
+volumes/db/data/
+volumes/storage/
+volumes/logs/
+
+# Backups and temporary files
+*.old
+*.before-*
+*.dump
+*.backup
+*.sql.gz
+test.http
+
+# Local overrides
+docker-compose.override.yml
