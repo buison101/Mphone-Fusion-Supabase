@@ -446,6 +446,8 @@ services:
     volumes:
       - ./volumes/functions:/home/deno/functions:z
       - deno-cache:/root/.cache/deno
+      - /etc/mphone/firebase-service-account.json:/run/secrets/mphone-firebase-service-account.json:ro
+      - /etc/mphone/push-api-secret:/run/secrets/mphone-push-api-secret:ro
     depends_on:
       kong:
         condition: service_healthy
@@ -473,6 +475,9 @@ services:
       # TODO: Allow configuring VERIFY_JWT per function.
       VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
       FUSIONPBX_DATABASE_URL: ${FUSIONPBX_DATABASE_URL}
+      FIREBASE_PROJECT_ID: mphone-3dd40
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/mphone-firebase-service-account.json
+      MPHONE_PUSH_SECRET_FILE: /run/secrets/mphone-push-api-secret
     command:
       [
         "start",
@@ -494,6 +499,7 @@ services:
       - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
       # Initialize the database settings with JWT_SECRET and JWT_EXP
       - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
+      - ./volumes/db/init/mphone_push.sql:/docker-entrypoint-initdb.d/init-scripts/97-mphone-push.sql:Z
       # PGDATA directory is persisted between restarts
       - ./volumes/db/data:/var/lib/postgresql/data:Z
       # Changes required for internal supabase data such as _analytics

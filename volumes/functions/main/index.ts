@@ -6,6 +6,22 @@ const JWT_SECRET = Deno.env.get('JWT_SECRET')
 const SUPABASE_JWKS = parseJwks(Deno.env.get('SUPABASE_JWKS'))
 const VERIFY_JWT = Deno.env.get('VERIFY_JWT') === 'true'
 
+const readWorkerSecret = async (pathEnv: string, targetEnv: string) => {
+  const path = Deno.env.get(pathEnv)
+  if (!path) return [targetEnv, ''] as const
+  try {
+    return [targetEnv, (await Deno.readTextFile(path)).trim()] as const
+  } catch (error) {
+    console.error(`Unable to load worker secret from ${pathEnv}`, error)
+    return [targetEnv, ''] as const
+  }
+}
+
+const workerSecrets = Object.fromEntries(await Promise.all([
+  readWorkerSecret('GOOGLE_APPLICATION_CREDENTIALS', 'FIREBASE_SERVICE_ACCOUNT_JSON'),
+  readWorkerSecret('MPHONE_PUSH_SECRET_FILE', 'MPHONE_PUSH_SECRET'),
+]))
+
 // NOTE:(kallebysantos) We don't check for valid keys but just the bare array parsing,
 // let this for 'jose' lib verification
 export function parseJwks(raw: string | undefined): jose.JSONWebKeySet | null {
@@ -149,7 +165,7 @@ Deno.serve(async (req: Request) => {
   const workerTimeoutMs = 1 * 60 * 1000
   const noModuleCache = false
   const importMapPath = null
-  const envVarsObj = Deno.env.toObject()
+  const envVarsObj = { ...Deno.env.toObject(), ...workerSecrets }
   const envVars = Object.keys(envVarsObj).map((k) => [k, envVarsObj[k]])
 
   try {
