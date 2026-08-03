@@ -57,11 +57,17 @@ const accessToken = async () => {
 }
 
 export type ForwardNotification = {
+  eventType: 'started' | 'ended'
   eventId: string
   callerNumber: string
   dialedNumber: string
   extension: string
   forwardDestination: string
+  status: string
+  occurredAt: string
+  startedAt: string
+  duration: number
+  billsec: number
 }
 
 export const sendForwardNotification = async (token: string, event: ForwardNotification) => {
@@ -79,17 +85,23 @@ export const sendForwardNotification = async (token: string, event: ForwardNotif
         message: {
           token,
           data: {
-            mphone_event: 'call_forward',
+            mphone_event: event.eventType === 'ended' ? 'call_forward_ended' : 'call_forward_started',
+            event_type: event.eventType,
             event_id: event.eventId,
             caller_number: event.callerNumber,
             dialed_number: event.dialedNumber,
             extension: event.extension,
             forward_destination: event.forwardDestination,
+            status: event.status,
+            occurred_at: event.occurredAt,
+            started_at: event.startedAt,
+            duration: String(event.duration),
+            billsec: String(event.billsec),
           },
           android: {
             priority: 'high',
             collapse_key: event.eventId,
-            ttl: '120s',
+            ttl: event.eventType === 'ended' ? '3600s' : '120s',
           },
         },
       }),
